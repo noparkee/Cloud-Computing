@@ -1,6 +1,6 @@
-import os
-import urllib.parse
 import boto3
+import urllib.parse
+import os
 from PIL import Image, ImageFilter
 
 print('Loading function')
@@ -9,9 +9,8 @@ s3 = boto3.client('s3')
 CG = os.environ['COLOR_OR_GRAY']
 
 def check_type(key):
-    type = key[key.find('.', -5):]
+    type = key[-4:]
     type = type.replace('.', '')          # get image file type
-    #name = key[:-(len(type)+1)]
     
     if (type != 'jpg') and (type != 'png') and (type != 'jpeg') and (type != 'gif'):
         return False
@@ -27,7 +26,7 @@ def make_square(image_path, src):
     else:
         img = image.crop((0, img_height//2 - img_width//2, img_width, img_height//2 + img_width//2))
     
-    if CG == 'gray':
+    if CG == 'gray' or CG == 'grey':
         img = img.convert('L')
     
     dst = 'square-' + src
@@ -35,14 +34,13 @@ def make_square(image_path, src):
     img.save(result_path)
     
     print("Transformation Complete!")
-    
+
     return result_path
     
 def lambda_handler(event, context):
-    print("Delete Event!")
-    
     srcbucket = event['Records'][0]['s3']['bucket']['name']
     srckey = urllib.parse.unquote_plus(event['Records'][0]['s3']['object']['key'], encoding='utf-8')
+
     if not check_type(srckey):
         print("Type Error!")
         return False
@@ -52,12 +50,14 @@ def lambda_handler(event, context):
         print("Same Bucket Error!")
         return False
         
-    if CG == 'grey':
+    if CG == 'gray':
         dstkey = 'output-gray-' + srckey
+    elif CG == 'grey':
+        dstkey = 'output-grey-' + srckey
     else:
         dstkey = 'output-color-' + srckey
     
-    download_path = '/tmp/{}'.format( srckey)               # image download
+    download_path = '/tmp/{}'.format(srckey)               # image download
     s3.download_file(srcbucket, srckey, download_path)
     
     upload_path = make_square(download_path, srckey)        # make square
